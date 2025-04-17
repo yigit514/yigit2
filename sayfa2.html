@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>XOX - Gelişmiş</title>
+  <style>
+    body {
+      background-color: #f2f2f2;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      color: #333;
+      margin: 0;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      color: #222;
+    }
+
+    .scoreboard {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+    }
+
+    select, button {
+      padding: 8px 12px;
+      font-size: 16px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin: 5px;
+      background-color: #ffffff;
+      transition: background 0.2s ease;
+    }
+
+    button:hover, select:hover {
+      background-color: #e0e0e0;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 5px;
+    }
+
+    .cell {
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 48px;
+      font-weight: bold;
+      color: #222;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.2s ease, background-color 0.3s;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .cell.played {
+      transform: scale(1.1);
+      background-color: #eaf4ff;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-size: 20px;
+      height: 30px;
+      color: #000;
+    }
+  </style>
+</head>
+<body style="width: 100%; height: 1100px;
+ background: linear-gradient(to right top, #0cbaba, #380036, darksalmon); color: wheat;>
+
+  <h1>✨ XOX Oyunu</h1>
+
+  <div class="scoreboard">
+    <div><strong>X:</strong> <span id="scoreX">0</span></div>
+    <div><strong>O:</strong> <span id="scoreO">0</span></div>
+  </div>
+
+  <div class="controls">
+    <label>Oyun Modu: </label>
+    <select id="modeSelect">
+      <option value="human">İnsana Karşı</option>
+      <option value="bot">Bota Karşı</option>
+    </select>
+    <button id="reset">Yeniden Başlat</button>
+    <button id="resetScores">Skoru Sıfırla</button>
+  </div>
+
+  <div class="board" id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <div id="message"></div>
+
+  <!-- Ses Efektleri -->
+  <audio id="clickSound" src="button-3.mp3"></audio>
+  <audio id="winSound" src="button-8.mp3"></audio>
+
+  <script>
+    const cells = document.querySelectorAll(".cell");
+    const message = document.getElementById("message");
+    const resetBtn = document.getElementById("reset");
+    const resetScoresBtn = document.getElementById("resetScores");
+    const scoreX = document.getElementById("scoreX");
+    const scoreO = document.getElementById("scoreO");
+    const modeSelect = document.getElementById("modeSelect");
+    const clickSound = document.getElementById("clickSound");
+    const winSound = document.getElementById("winSound");
+
+    let board = Array(9).fill("");
+    let currentPlayer = "X";
+    let gameActive = true;
+    let scores = { X: 0, O: 0 };
+    let mode = "human";
+
+    const winPatterns = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6],
+    ];
+
+    modeSelect.addEventListener("change", () => {
+      mode = modeSelect.value;
+      resetGame();
+    });
+
+    function checkWinner() {
+      for (const [a, b, c] of winPatterns) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          gameActive = false;
+          message.textContent = `Kazanan: ${board[a]}`;
+          scores[board[a]]++;
+          updateScores();
+          winSound.play();
+          return;
+        }
+      }
+      if (!board.includes("")) {
+        message.textContent = "Beraberlik!";
+        gameActive = false;
+      }
+    }
+
+    function updateScores() {
+      scoreX.textContent = scores.X;
+      scoreO.textContent = scores.O;
+    }
+
+    function handleClick(e) {
+      const index = e.target.dataset.index;
+      if (!gameActive || board[index]) return;
+
+      clickSound.play();
+      board[index] = currentPlayer;
+      e.target.textContent = currentPlayer;
+      e.target.classList.add("played");
+      checkWinner();
+
+      if (gameActive) {
+        currentPlayer = currentPlayer === "X" ? "O" : "X";
+        if (mode === "bot" && currentPlayer === "O") {
+          setTimeout(botMove, 500);
+        }
+      }
+    }
+
+    function botMove() {
+      let emptyCells = board.map((val, i) => val === "" ? i : null).filter(v => v !== null);
+      let randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      board[randomIndex] = "O";
+      const cell = document.querySelector(`.cell[data-index="${randomIndex}"]`);
+      cell.textContent = "O";
+      cell.classList.add("played");
+      clickSound.play();
+      checkWinner();
+      currentPlayer = "X";
+    }
+
+    function resetGame() {
+      board = Array(9).fill("");
+      cells.forEach(cell => {
+        cell.textContent = "";
+        cell.classList.remove("played");
+      });
+      currentPlayer = "X";
+      gameActive = true;
+      message.textContent = "";
+    }
+
+    function resetScores() {
+      scores = { X: 0, O: 0 };
+      updateScores();
+    }
+
+    cells.forEach(cell => cell.addEventListener("click", handleClick));
+    resetBtn.addEventListener("click", resetGame);
+    resetScoresBtn.addEventListener("click", resetScores);
+  </script>
+
+</body>
+</html>
